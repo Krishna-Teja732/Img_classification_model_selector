@@ -15,7 +15,9 @@ def run_concurrently(base_models, data_path):
             base_models[i]["save_model_path"],
             base_models[i]["number_of_classes"],
             base_models[i]["activation"])
-        processes.append(Process(target=train_model, args=(model,iterators[i])))
+        process = Process(target=train_model, args=(model,iterators[i]))
+        processes.append(process)
+        process.start()
 
     for p in processes:
         p.join()
