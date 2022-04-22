@@ -23,8 +23,8 @@ class CustomDirectoryIterator:
         '''
             resets the training and testing iterations
         '''
-        self.train_iterations = self.training_size * (self.samples // self.BATCH_SIZE)
-        self.test_iterations = (1-self.training_size) * (self.samples // self.BATCH_SIZE)
+        self.train_iterations = int(self.training_size * (self.samples // self.BATCH_SIZE))
+        self.test_iterations = int((1-self.training_size) * (self.samples // self.BATCH_SIZE))
 
 
     def load_img_from_dir(self, batch_size = 32, image_data_gen = ImageDataGenerator(samplewise_center=True)):
@@ -172,4 +172,3 @@ class CustomDirectoryIterator:
         return (
             np.array(normalized_images), np.array(labels)
         )
-
