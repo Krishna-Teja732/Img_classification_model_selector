@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow_hub as hub
 from keras import Model
+from multiprocessing import Pool
 
 """
 BaseModel
@@ -42,3 +43,16 @@ class CustomModel(Model):
 
     def call(self, inputs, training=None, mask=None):
         return self.classifier(self.base_layer(inputs))
+
+def max_ind(prob):
+  max, val = 0, 0
+  for i in range(len(prob)):
+    if prob[i]>val:
+      val = prob[i]
+      max = i
+  return max
+
+def predict_class(model, x):
+    pool = Pool()
+    async_res = pool.map_async(max_ind, model.predict(x))
+    return async_res.get()

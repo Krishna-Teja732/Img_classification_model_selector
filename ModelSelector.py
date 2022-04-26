@@ -1,7 +1,6 @@
 from os import path
 import tensorflow as tf
-from multiprocessing import Process
-from CustomModel import CustomModel, BaseModel
+from CustomModel import CustomModel, BaseModel, predict_class
 from CustomDirectoryIterator import CustomDirectoryIterator
 
 base_models = {
@@ -20,54 +19,80 @@ input_shape = {
     "mobilenet_v3_large_100_224": (224,224,3)
 }
 
-def train_model(model: CustomModel, data_iterator: CustomDirectoryIterator, epoch, save_model_path):
-  data, label = data_iterator.next()
-  count=0
-  while data is not None:
-    print(data_iterator.train_iterations)
-    model.fit(data, label, epochs=epoch)
-    data, label = data_iterator.next()
-    count = count+1
-  model.save(save_model_path)
-  print("completed training", save_model_path)
-
-
-def run_concurrently(base_models, data_path):
-  processes = []
-  iterators = [CustomDirectoryIterator(data_path, (base_models[i]["img_size"][0],base_models[i]["img_size"][1])) for i in range(len(base_models))]
-  
-
-  for i in range(len(base_models)):
-      model = CustomModel(
-          base_models[i]["base_model_path"],
-          base_models[i]["save_model_path"],
-          len(iterators[0].classes),
-          base_models[i]["input_shape"]
-          )
-      model.compile(optimizer='adam', loss=tf.keras.losses.SparseCategoricalCrossentropy(), metrics=tf.metrics.CategoricalAccuracy())
-      process = Process(target=train_model, args=(model,iterators[i],base_models[i]["epochs"], base_models[i]["save_model_path"]))
-      processes.append(process)
-      process.start()
-
-  for p in processes:
-      p.join()
-
-  print("completed running all the models")
-
-
 class ModelSelector:
-  def __init__(self, data_set_path) -> None:
-    models = list()
-    global base_models
+  def __init__(self, data_set_path, base_models, input_shape, epochs = 10) -> None:
+    self.model_inp = list()
+    self.models = dict()
+    self.data_path = data_set_path
+    self.acc = dict()
     for key in base_models.keys():
       model = dict()
       model["base_model_path"] = str(path.join("base_models", key))
       model["img_size"] = input_shape[key]
-      model["epochs"] = 1
-      model["save_model_path"] = str(path.join("saved_models", key))
+      model["epochs"] = epochs
+      model["save_model_path"] = str(path.join("const models","saved_models", key))
       model["input_shape"] = input_shape[key]
-      models.append(model)
-    run_concurrently(models,data_set_path)
+      self.model_inp.append(model)
+
+  def train_model(self, model: CustomModel, data_iterator: CustomDirectoryIterator, epoch, save_model_path):
+    data, label = data_iterator.next()
+    while data is not None:
+      print(data_iterator.train_iterations)
+      model.fit(data, label, epochs=epoch)
+      data, label = data_iterator.next()
+    model.save(save_model_path)
+    self.models[save_model_path] = model
+    print("completed training", save_model_path)
+
+  def run_concurrently(self, load_from_local = True):
+    self.iterators = dict()
+    i = 0
+    for temp in self.model_inp:
+      self.iterators[temp["save_model_path"]] = CustomDirectoryIterator(self.data_path, (self.model_inp[i]["img_size"][0],self.model_inp[i]["img_size"][1]), 32, training_size=0.2)
+      i+=1
+
+    for i in range(len(self.model_inp)):
+      if load_from_local == False:
+        model = CustomModel(
+          self.model_inp[i]["base_model_path"],
+          self.model_inp[i]["save_model_path"],
+          len(self.iterators[self.model_inp[i]["save_model_path"]].classes),
+          self.model_inp[i]["input_shape"]
+          )
+        model.compile(optimizer='adam', loss=tf.keras.losses.SparseCategoricalCrossentropy(), metrics=tf.metrics.CategoricalAccuracy())
+        self.train_model(model,self.iterators[self.model_inp[i]["save_model_path"]],self.model_inp[i]["epochs"], self.model_inp[i]["save_model_path"])
+      else:
+        self.models[self.model_inp[i]["save_model_path"]] = tf.keras.models.load_model(self.model_inp[i]["save_model_path"])
+    print("completed running all the models")
+
+  def accuracy(self, y, y_pred):
+    c=0
+    for i in range(len(y)):
+      if y_pred[i]==y[i]:
+        c+=1
+    return c/len(y)
+  
+  def test_model(self, model: CustomModel, iterator: CustomDirectoryIterator):
+    temp, count = 0, 0
+    x,y = iterator.test_next()
+    while x is not None:
+      temp+=self.accuracy(y,predict_class(model,x))
+      x,y = iterator.test_next()
+      count+=1
+    return temp/count
+
+  def test(self):
+    max_acc,out_key = 0,""
+    for key in self.models:
+      itr = self.iterators[key]
+      model = self.models[key]
+      val = self.test_model(model, itr)
+      self.acc[key] = val
+      if val>max_acc:
+        max_acc=val
+        out_key = key
+    self.models[out_key].save("output_model/"+out_key)
+
 
   def download_basemodels(self):
     BaseModel(base_models["efficientnet_b7"], input_shape["efficientnet_b7"], "./base_models/efficientnet_b7")
