@@ -173,3 +173,15 @@ class CustomDirectoryIterator:
             np.array(normalized_images), np.array(labels)
         )
 
+if __name__ == '__main__':
+    #checking the the shapes of the images
+    #flipped
+    itr = CustomDirectoryIterator("..\\..\\construction_dataset_small", (600,600))
+    data, label = itr.next(flip_images=True)
+    size = set()
+    while data is not None:
+        for d in data:
+            size.add(d.shape)
+        data, label = itr.next(flip_images=True)
+    print(size)
+
