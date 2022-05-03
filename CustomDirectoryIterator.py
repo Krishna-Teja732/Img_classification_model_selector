@@ -23,8 +23,8 @@ class CustomDirectoryIterator:
         '''
             resets the training and testing iterations
         '''
-        self.train_iterations = self.training_size * (self.samples // self.BATCH_SIZE)
-        self.test_iterations = (1-self.training_size) * (self.samples // self.BATCH_SIZE)
+        self.train_iterations = int(self.training_size * (self.samples // self.BATCH_SIZE))
+        self.test_iterations = int((1-self.training_size) * (self.samples // self.BATCH_SIZE))
 
 
     def load_img_from_dir(self, batch_size = 32, image_data_gen = ImageDataGenerator(samplewise_center=True)):
@@ -106,7 +106,7 @@ class CustomDirectoryIterator:
 
 
     #only normalization
-    def next(self, scale_bottom=0, flip_images = False, light_change = False, crop_images = False, save_processed_img = False, save_img_path = "/") -> tuple:
+    def next(self, scale_bottom=0, flip_images = False, light_change = False, crop_images = False, save_processed_img = False, save_img_path = "/", normalization=True) -> tuple:
         '''
             returns the next batch of images, labels tuple for training 
             runs until training iteration reaches 0
@@ -116,7 +116,7 @@ class CustomDirectoryIterator:
             light_change = on true changes the brightness of the image randomly within the range (0.001, 0.2)
             crop_images = crops the images to 5 crops, best not used if not going for aggressive augmentation
         '''
-        if self.train_iterations == 0:
+        if self.train_iterations <= 0:
             self.reset_iterations()
             return None, None #end of current iteration
 
@@ -126,6 +126,8 @@ class CustomDirectoryIterator:
         normalizer = tf.keras.layers.Rescaling(1./255)
         if scale_bottom != 0:
             normalizer = tf.keras.layers.Rescaling(1./127.5, offset=-1)
+        if normalization == False:
+          normalizer = tf.keras.layers.Rescaling(1)
 
         res_images = list(map(lambda x: normalizer(x), images))
         if crop_images: 
@@ -159,29 +161,18 @@ class CustomDirectoryIterator:
             returns a batch of image for testing
             batch size is given during construction
         '''
-        if self.test_iterations == 0:
+        if self.test_iterations <= 0:
             self.reset_iterations()
             return None, None
         self.test_iterations -= 1
+        images , labels = self.directory_iterator.next()
+        
         normalizer = tf.keras.layers.Rescaling(1./255)
         if scale_bottom != 0:
             normalizer = tf.keras.layers.Rescaling(1./127.5, offset=-1)
 
-        images, labels = self.next()
-        normalized_images = list(map(lambda x: normalizer(x), images))
+        images = list(map(lambda x: normalizer(x), images))
+
         return (
-            np.array(normalized_images), np.array(labels)
+            np.array(images), np.array(list(map(self.label_encoder, labels)))
         )
-
-if __name__ == '__main__':
-    #checking the the shapes of the images
-    #flipped
-    itr = CustomDirectoryIterator("..\\..\\construction_dataset_small", (600,600))
-    data, label = itr.next(flip_images=True)
-    size = set()
-    while data is not None:
-        for d in data:
-            size.add(d.shape)
-        data, label = itr.next(flip_images=True)
-    print(size)
-
