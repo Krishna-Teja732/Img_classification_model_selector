@@ -3,10 +3,12 @@ import shutil
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
+from random import Random, random
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from keras.preprocessing.image import DirectoryIterator, ImageDataGenerator
+from keras.preprocessing.image import DirectoryIterator, ImageDataGenerator, load_img, save_img, img_to_array, array_to_img
 from frame_extractor import save_frames, check_folder
+from uuid import uuid4
 
 class CustomDirectoryIterator:
     def __init__(self, path, img_size, batch_size = 32, training_size = 0.8) -> None:
@@ -16,6 +18,10 @@ class CustomDirectoryIterator:
         self.BATCH_SIZE = batch_size
         self.training_size = training_size
         self.classes = []
+
+        # calling balance before load img
+        self.balance_images()
+
         self.load_img_from_dir(batch_size=batch_size)
         self.samples = self.directory_iterator.samples
         self.reset_iterations()
@@ -178,6 +184,52 @@ class CustomDirectoryIterator:
             np.array(images), np.array(list(map(self.label_encoder, labels)))
         )
 
+    def balance_images(self):
+        # we need count of images in each class
+        img_count = dict()
+        max_count = 0
+        threshold = 0.95
+        for c in self.classes:
+            l = len(os.listdir(os.path.join(self.PATH, c)))
+            max_count = max(max_count, l)
+            img_count[c] = l
+        print("COUNT ",img_count)
+
+        # check should we balance
+        for c in img_count:
+            if threshold*max_count > img_count[c]:
+                break
+            print('already in balanced state')
+            return
+
+        # copy images to new folder
+        dest = "balanced"
+        shutil.copytree(self.PATH, dest, dirs_exist_ok=True)
+        self.PATH = dest # path updated
+
+        # increase the images in those classes to match the max_count
+        r = Random()
+        for c in img_count:
+            gen_count = max_count - img_count[c]
+            file_ls = [os.path.join(dest,c,i) for i in os.listdir(os.path.join(dest, c))]
+            print(c,": ",file_ls)
+            for i in range(gen_count):
+                # take a random file
+                img = r.choice(file_ls)
+                img = load_img(img)
+                img = img_to_array(img)
+                pp = r.choice(["flip","light"])
+                if pp == "flip":
+                    new_img = tf.image.flip_left_right(img).numpy()
+                else:
+                    light_range = (0.001,2.0)
+                    new_img = tf.keras.preprocessing.image.random_brightness(img, light_range)
+                name = str(uuid4())+".jpg"
+                save_img(os.path.join(dest, c, name), new_img)
+        
+        print("balanced")
+
+
     @staticmethod
     def create_dataset_from_video(path, output_path, frames_per_second = 10, max_frames = 1000) -> None:
         '''
@@ -199,4 +251,6 @@ class CustomDirectoryIterator:
                 save_frames(video_file, output_folder, frames_per_second, max_frames)
 
 if __name__ == '__main__':
-    CustomDirectoryIterator.create_dataset_from_video("..\\video_source","..\\video_images",3,100)
+    #CustomDirectoryIterator.create_dataset_from_video("..\\video_source","..\\video_images",3,100)
+    itr = CustomDirectoryIterator("..\\..\\images\\Minet small", (200,200))
+    itr.balance_images()
