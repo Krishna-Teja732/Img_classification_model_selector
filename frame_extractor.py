@@ -3,12 +3,26 @@ import numpy as np
 import os
 import shutil
 
-def check_folder(path):
+def check_folder(path) -> None:
+    '''
+        checks for the folder given as the path. if not exists creates one. 
+        if it already exists deletes all the content in the folder.
+        path = path of the folder
+    '''
     if os.path.isdir(path):
         shutil.rmtree(path)
+    print("PATH ", path)
     os.mkdir(path) #clearing the elements in the folder
 
-def save_frames(video_file, output_folder="video_images", frames_per_second = 10, max_frames = 1000):
+def save_frames(video_file, output_folder="video_images", frames_per_second = 10, max_frames = 1000) -> None:
+    """
+        segregates the frames from the given video file and saves in the given output folder.
+
+        video_file = video file path
+        output_folder = folder to where to save the frames
+        frames_per_second = number of frames to be used as fps of the video
+        max_frames = total number of frames that can be extracted from the entire video
+    """
     video = VideoFileClip(video_file)
     check_folder(output_folder)
 

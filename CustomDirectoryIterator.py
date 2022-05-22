@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 from keras.preprocessing.image import DirectoryIterator, ImageDataGenerator
+from frame_extractor import save_frames, check_folder
 
 class CustomDirectoryIterator:
     def __init__(self, path, img_size, batch_size = 32, training_size = 0.8) -> None:
@@ -176,3 +177,26 @@ class CustomDirectoryIterator:
         return (
             np.array(images), np.array(list(map(self.label_encoder, labels)))
         )
+
+    @staticmethod
+    def create_dataset_from_video(path, output_path, frames_per_second = 10, max_frames = 1000) -> None:
+        '''
+            In case of using video as input call this function before using CustomDirectoryIterator
+            to extract images from the video based on frames and save it in the required format.
+
+            path = path to folder containing the video files. Each video file corresponds to a class
+            output_path = path to store the output. folder with the class name will be created in it and the images will be stored
+            frames_per_second = frames per second to be used for the video
+            max_frames = limit to the total number of images that can be extracted from the entire video
+        '''
+        #read the class names for output folder path
+        check_folder(output_path)
+        for entry in os.scandir(path):
+            if entry.is_file():
+                print(entry.name)
+                video_file = os.path.join(path, entry.name)
+                output_folder = os.path.join(output_path, entry.name.split(".")[0])
+                save_frames(video_file, output_folder, frames_per_second, max_frames)
+
+if __name__ == '__main__':
+    CustomDirectoryIterator.create_dataset_from_video("..\\video_source","..\\video_images",3,100)
