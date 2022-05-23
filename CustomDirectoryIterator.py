@@ -11,7 +11,7 @@ from frame_extractor import save_frames, check_folder
 from uuid import uuid4
 
 class CustomDirectoryIterator:
-    def __init__(self, path, img_size, batch_size = 32, training_size = 0.8) -> None:
+    def __init__(self, path, img_size, batch_size = 32, training_size = 0.8, balance_dataset = False) -> None:
         self.PATH = path
         self.IMG_SIZE = img_size
         self.directory_iterator = None
@@ -20,7 +20,8 @@ class CustomDirectoryIterator:
         self.classes = []
 
         # calling balance before load img
-        self.balance_images()
+        if balance_dataset:
+            self.balance_images()
 
         self.load_img_from_dir(batch_size=batch_size)
         self.samples = self.directory_iterator.samples
