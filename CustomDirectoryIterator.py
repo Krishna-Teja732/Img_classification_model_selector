@@ -1,14 +1,12 @@
 import os
 import shutil
 import numpy as np
+from math import ceil
 import tensorflow as tf
 from pathlib import Path
-from random import Random, random
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from keras.preprocessing.image import DirectoryIterator, ImageDataGenerator, load_img, save_img, img_to_array, array_to_img
-from frame_extractor import save_frames, check_folder
-from uuid import uuid4
+from keras.preprocessing.image import DirectoryIterator, ImageDataGenerator
 
 class CustomDirectoryIterator:
     def __init__(self, path, img_size, batch_size = 32, training_size = 0.8) -> None:
@@ -26,8 +24,8 @@ class CustomDirectoryIterator:
         '''
             resets the training and testing iterations
         '''
-        self.train_iterations = int(self.training_size * (self.samples // self.BATCH_SIZE))
-        self.test_iterations = int((1-self.training_size) * (self.samples // self.BATCH_SIZE))
+        self.train_iterations = ceil(self.training_size * (self.samples // self.BATCH_SIZE))
+        self.test_iterations = ceil((1-self.training_size) * (self.samples // self.BATCH_SIZE))
 
 
     def load_img_from_dir(self, batch_size = 32, image_data_gen = ImageDataGenerator(samplewise_center=True)):
