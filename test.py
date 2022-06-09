@@ -1,5 +1,5 @@
 from sklearn.metrics import accuracy_score
-import ModelSelectorMod as ms
+import ModelSelector as ms
 from os import path
 
 if __name__=='__main__':
