@@ -6,5 +6,4 @@ video_images
 video_source
 balanced
 const_models
-test.py
 output_model
