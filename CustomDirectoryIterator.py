@@ -187,7 +187,7 @@ class CustomDirectoryIterator:
       '''
       if self.train_iterations <= 0:
         self.reset_iterations()
-        return None
+        return None, None
       self.train_iterations -= 1
       images, labels = self.directory_iterator.next()
 
@@ -201,4 +201,4 @@ class CustomDirectoryIterator:
         imgs = tf.image.resize(images, img_size)
         res_images.append(list(map(lambda x: normalizer(x), imgs)))
 
-      return res_images
+      return res_images, np.array(list(map(self.label_encoder, labels)))

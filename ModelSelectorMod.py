@@ -1,7 +1,8 @@
 from genericpath import exists
 from os import path
+import pprint
 import tensorflow as tf
-from CustomModel import CustomModel, BaseModel, predict_class
+from CustomModel import CustomModel, BaseModel, max_ind, predict_class
 from CustomDirectoryIterator import CustomDirectoryIterator
 from sklearn.metrics import precision_score, confusion_matrix, accuracy_score, recall_score
 import numpy as np
@@ -53,7 +54,6 @@ class ModelSelector:
     for key in base_models.keys():
       temp = dict()
       temp["base_model_path"] = str(path.join(base_model_path, "base_models", key))
-      temp["img_size"] = input_shape[key]
       temp["save_model_path"] = str(path.join(save_model_path, key))
       temp["input_shape"] = input_shape[key]
       self.model_inp.append(temp)
@@ -62,7 +62,7 @@ class ModelSelector:
   def __init_iterators(self , batch_size, training_size):
     self.iterators = dict()
     for temp in self.model_inp:
-      self.iterators[temp["save_model_path"]] = CustomDirectoryIterator(self.data_path, (temp["img_size"][0],temp["img_size"][1]), batch_size, training_size=training_size)
+      self.iterators[temp["save_model_path"]] = CustomDirectoryIterator(self.data_path, (temp["input_shape"][0],temp["input_shape"][1]), batch_size, training_size=training_size)
     self.out_dim = len(self.iterators[self.model_inp[0]["save_model_path"]].classes)
 
   def __init_custom_model(self, base_model_path, save_model_path, output_layer_len, input_shape, activation, optimizer)-> CustomModel:
@@ -154,45 +154,25 @@ class ModelSelector:
             }
 
   def predict(self, path):
-    #create a custom iterator but resize according to size but for each image
     iterator = CustomDirectoryIterator(path, (300,300), training_size = 1.0, batch_size=32)
-    input_shapes_predict = []
-    i = 0
-    model_size_dict = dict()
-    for m in self.model_inp:
-      model_size_dict[m["save_model_path"]] = i
-      i += 1
-      input_shapes_predict.append((m["input_shape"][0], m["input_shape"][1]))
-    x = iterator.predict_next(input_shapes_predict)
-    predicted = []
-    while x is not None:
-      preds = []
-      for m in self.models:
-        index = model_size_dict[m]
-        preds.append(predict_class(self.models[m], np.array(x[index])))
+    input_sizes = [inp["input_shape"][:-1] for inp in self.model_inp]
+    models = [self.models[inp["save_model_path"]] for inp in self.model_inp]
+    x,y = iterator.predict_next(input_sizes)
+    y_final = list()
+    y_true = list()
 
-      #voting
-      for i in range(len(preds[0])):
-        votes = dict()
-        for j in range(len(preds)):
-          if preds[j][i] in votes:
-            votes[preds[j][i]] += 1
-          else:
-            votes[preds[j][i]] = 1
-        max_votes = None
-        vote_class = None
-        for v in votes:
-          if max_votes is None:
-            max_votes = votes[v]
-            vote_class = v
-          else:
-            if votes[v] > max_votes:
-              max_votes = votes[v]
-              vote_class = v
-        predicted.append(vote_class)
-      x = iterator.predict_next(input_shapes_predict)     
-    print("completed")
-    return predicted
+    while x is not None:
+      y_res = np.zeros((iterator.BATCH_SIZE, self.out_dim))
+      for index in range(len(input_sizes)):
+        y_pred = predict_class(models[index], np.array(x[index]))
+        for img_index in range(len(y_pred)):
+          y_res[img_index][y_pred[img_index]]+=1
+      y_classes_batch = list(map(max_ind, y_res))
+      y_final.extend(y_classes_batch)
+      y_true.extend(y)
+      x,y = iterator.predict_next(input_sizes)
+    
+    return y_true, y_final
 
   def download_basemodels(self):
     BaseModel(base_models["efficientnet_b7"], input_shape["efficientnet_b7"], "./base_models/efficientnet_b7")
