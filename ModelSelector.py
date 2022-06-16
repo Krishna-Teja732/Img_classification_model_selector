@@ -1,11 +1,12 @@
-from genericpath import exists
-from os import path
-import pprint
-import tensorflow as tf
-from CustomModel import CustomModel, BaseModel, max_ind, predict_class
-from CustomDirectoryIterator import CustomDirectoryIterator
-from sklearn.metrics import precision_score, confusion_matrix, accuracy_score, recall_score
+import os
+import shutil
 import numpy as np
+from os import path
+import tensorflow as tf
+from CustomTuner import CustomTuner
+from CustomDirectoryIterator import CustomDirectoryIterator
+from CustomModel import CustomModel, BaseModel, max_ind, predict_class
+from sklearn.metrics import precision_score, confusion_matrix, accuracy_score, recall_score
 
 base_models = {
     "efficientnet_b7": "https://tfhub.dev/tensorflow/efficientnet/b7/feature-vector/1",
@@ -43,7 +44,7 @@ class ModelSelector:
     self.model_inp = list()       # Contains inputs that are required to load the model
     self.models = dict()          # Contains tf.keras.models as values
     self.data_path = dataset_path 
-    self.acc = dict()             # Contains the accuracy of each model after slef.test() is called
+    self.summary = dict()             # Contains the accuracy of each model after slef.test() is called
     self.keys = list()            # Contains the model names
 
     if type == 'multiclass':
@@ -111,14 +112,22 @@ class ModelSelector:
     self.models[save_model_path] = model
     print("Completed training", save_model_path)
 
-  def train_models(self, epochs = 10):
+  def train_models(self, epochs = 10, tune_hyperparameters = False, max_trials = 10):
     for i in range(len(self.model_inp)):
       print("Trainig model ", i+1,'/',len(self.model_inp), end='\n')
-      self.__train_model(self.models[self.model_inp[i]["save_model_path"]],
-                      self.iterators[self.model_inp[i]["save_model_path"]],
-                      epochs,
-                      self.model_inp[i]["save_model_path"])
-  
+      model = self.models[self.model_inp[i]["save_model_path"]]
+      itr = self.iterators[self.model_inp[i]["save_model_path"]]
+      save_path = self.model_inp[i]["save_model_path"]
+      if not tune_hyperparameters:
+        self.__train_model(model,itr,epochs,save_path)
+      else:
+        tuner = CustomTuner(save_path, itr, max_trials=max_trials)
+        tuner.search()
+        model = tuner.get_best_models(1)[0]
+        model.save(save_path)
+        self.models[save_path] = model
+        shutil.rmtree(os.path.join('.', 'test_model_params'))
+
   def accuracy(self, y, y_pred):
     c=0
     for i in range(len(y)):
@@ -132,7 +141,7 @@ class ModelSelector:
       itr = self.iterators[key]
       model = self.models[key]
       val = self.__test_model(model, itr)
-      self.acc[key] = val
+      self.summary[key] = val
       val = val["accuracy"]
       if val>=max_acc:
         max_acc=val
