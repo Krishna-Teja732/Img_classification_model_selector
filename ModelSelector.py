@@ -162,15 +162,22 @@ class ModelSelector:
             'confusion_matrix': confusion_matrix(y_test, y_pred)
             }
 
-  def predict(self, path):
+  def predict(self, path, save_path, string_labels = True, overwrite = True):
     iterator = CustomDirectoryIterator(path, (300,300), training_size = 1.0, batch_size=32)
     input_sizes = [inp["input_shape"][:-1] for inp in self.model_inp]
     models = [self.models[inp["save_model_path"]] for inp in self.model_inp]
     x,y = iterator.predict_next(input_sizes)
     y_final = list()
     y_true = list()
+    if os.path.exists(save_path) and overwrite:
+      shutil.rmtree(save_path)
+    os.mkdirs(save_path)
 
+    count = 1
     while x is not None:
+      for image in x[0]:
+        tf.keras.utils.save_img(os.path.join(save_path, str(count) + '.jpeg'), image.numpy())
+        count+=1
       y_res = np.zeros((iterator.BATCH_SIZE, self.out_dim))
       for index in range(len(input_sizes)):
         y_pred = predict_class(models[index], np.array(x[index]))
@@ -181,6 +188,10 @@ class ModelSelector:
       y_true.extend(y)
       x,y = iterator.predict_next(input_sizes)
     
+    if string_labels:
+      classes = self.iterators[list(self.iterators.keys())[0]].classes
+      return list(map(lambda index: classes[index],y_true)), list(map(lambda index: classes[index],y_final))
+
     return y_true, y_final
 
   def download_basemodels(self):

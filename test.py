@@ -19,6 +19,9 @@ if __name__=='__main__':
 
     selector.test_models()
 
+    selector.predict(path.join('.','data','const data test'), path.join('.','data','saved_images'))
+    
+
     pprint(selector.summary)
 
     
