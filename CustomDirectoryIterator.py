@@ -6,7 +6,9 @@ import tensorflow as tf
 from pathlib import Path
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from keras.preprocessing.image import DirectoryIterator, ImageDataGenerator
+from keras.preprocessing.image import DirectoryIterator, ImageDataGenerator, save_img, load_img, img_to_array, array_to_img
+from random import Random
+from uuid import uuid4
 
 class CustomDirectoryIterator:
     def __init__(self, path, img_size, batch_size = 32, training_size = 0.8) -> None:
@@ -202,3 +204,52 @@ class CustomDirectoryIterator:
         res_images.append(list(map(lambda x: normalizer(x), imgs)))
 
       return res_images, np.array(list(map(self.label_encoder, labels)))
+
+    @staticmethod
+    def balance_images(path):
+        '''
+            give the path of the folder and the function will automatically balance the images in various classes
+        '''
+        # we need count of images in each class
+        img_count = dict()
+        max_count = 0
+        threshold = 0.95
+
+        classes = os.listdir(path)
+
+        for c in classes:
+            l = len(os.listdir(os.path.join(path, c)))
+            max_count = max(max_count, l)
+            img_count[c] = l
+        print("COUNT ",img_count)
+        # check should we balance
+        for c in img_count:
+            if threshold*max_count > img_count[c]:
+                break
+            print('already in balanced state')
+            return
+        # copy images to new folder
+        # dest = "balanced"
+        # shutil.copytree(path, dest, dirs_exist_ok=True)
+        #path = dest # path updated
+        # increase the images in those classes to match the max_count
+        r = Random()
+        for c in img_count:
+            gen_count = max_count - img_count[c]
+            file_ls = [os.path.join(path,c,i) for i in os.listdir(os.path.join(path, c))]
+            print(c,": ",file_ls)
+            for i in range(gen_count):
+                # take a random file
+                img = r.choice(file_ls)
+                img = load_img(img)
+                img = img_to_array(img)
+                pp = r.choice(["flip","light"])
+                if pp == "flip":
+                    new_img = tf.image.flip_left_right(img).numpy()
+                else:
+                    light_range = (0.001,2.0)
+                    new_img = tf.keras.preprocessing.image.random_brightness(img, light_range)
+                name = str(uuid4())+".jpg"
+                save_img(os.path.join(path, c, name), new_img)
+        
+        print("balanced")
