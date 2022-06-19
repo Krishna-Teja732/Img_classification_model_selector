@@ -171,7 +171,7 @@ class ModelSelector:
     y_true = list()
     if os.path.exists(save_path) and overwrite:
       shutil.rmtree(save_path)
-    os.mkdirs(save_path)
+    os.mkdir(save_path)
 
     count = 1
     while x is not None:

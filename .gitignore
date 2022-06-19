@@ -8,3 +8,4 @@ balanced
 const_models
 output_model
 test_model_params
+*.lock
