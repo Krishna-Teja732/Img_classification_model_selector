@@ -1,31 +1,24 @@
-from sklearn.metrics import accuracy_score
-from pprint import pprint
 import ModelSelector as ms
 from os import path
+import pickle
 
 if __name__=='__main__':
 
-    models = dict()
-    
-    key, val = ms.base_models.popitem()
-    models[key] = val
     selector = ms.ModelSelector(path.join('.','data','const data test'), 
-                                models, ms.input_shape, 
-                                save_model_path= path.join('.', 'const_models' , 'saved_models'))
+                                ms.base_models, ms.input_shape, 
+                                save_model_path = path.join('.', 'const_models' , 'saved_models'))
 
-    selector.load_models()
+    selector.load_models(load_from_local=False)
 
-    # selector.train_models(tune_hyperparameters=True, max_trials= 1)
+    selector.train_models()
 
     selector.test_models()
 
-    # y_true, y_pred = selector.predict(path.join('.','data','const data test'), path.join('.','data','saved_images'))
+    with open('final_res', 'wb') as file:
+        pickle.dump(selector.summary,file)
 
-    # for val,pred in zip(y_true, y_pred):
-    #     print(val, pred)
+    with open('final_res','rb') as file:
+        summary = pickle.load(file)
 
-    for key in selector.summary:
-        print("Model: ", key)
-        pprint(selector.summary[key])
-
+    print(summary)
     

@@ -6,7 +6,7 @@ import tensorflow as tf
 from pathlib import Path
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from keras.preprocessing.image import DirectoryIterator, ImageDataGenerator, save_img, load_img, img_to_array, array_to_img
+from tensorflow.keras.preprocessing.image import DirectoryIterator, ImageDataGenerator, save_img, load_img, img_to_array, array_to_img
 from random import Random
 from uuid import uuid4
 

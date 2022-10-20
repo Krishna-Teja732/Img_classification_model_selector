@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import numpy as np
@@ -100,17 +101,21 @@ class ModelSelector:
   def __train_model(self, model: CustomModel, data_iterator: CustomDirectoryIterator, epoch, save_model_path, check_point_iter = 10):
     data, label = data_iterator.next()
     count_iter = 1
+    file = open(os.path.join(save_model_path, 'history.txt'), 'w')
     while data is not None:
       print('Number of iterations remaining: ', data_iterator.train_iterations)
-      model.fit(data, label, epochs=epoch)
+      history = model.fit(data, label, epochs=epoch)
+      file.write(json.dumps(history.history)+'\n')
       data, label = data_iterator.next()
       count_iter+=1
       if count_iter>check_point_iter:
         count_iter=0
         model.save(save_model_path)
+    file.flush()
+    file.close()
     model.save(save_model_path)
     self.models[save_model_path] = model
-    print("Completed training", save_model_path)
+    print("Completed training ", save_model_path)
 
   def train_models(self, epochs = 10, tune_hyperparameters = False, max_trials = 10):
     for i in range(len(self.model_inp)):
