@@ -10,6 +10,7 @@ keras-tuner = "*"
 tensorflow-hub = "*"
 pillow = "*"
 moviepy = "*"
+mlxtend = "*"
 
 [dev-packages]
 

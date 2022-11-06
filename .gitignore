@@ -10,4 +10,6 @@ output_model
 test_model_params
 *_models
 *.lock
-minet*
+minet
+minet_bal
+test
