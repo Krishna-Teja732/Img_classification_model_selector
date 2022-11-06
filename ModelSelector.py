@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import numpy as np
@@ -10,18 +9,16 @@ from CustomModel import CustomModel, BaseModel, max_ind, predict_class
 from sklearn.metrics import precision_score, confusion_matrix, accuracy_score, recall_score
 
 base_models = {
-    "efficientnet_b7": "https://tfhub.dev/tensorflow/efficientnet/b7/feature-vector/1",
+    # "gtm_model":'gtm_model',
     "efficientnetv2_b3_21k_ft1k": "https://tfhub.dev/google/imagenet/efficientnet_v2_imagenet21k_ft1k_b3/feature_vector/2",
     "efficientnetv2_xl_21k_ft1k": "https://tfhub.dev/google/imagenet/efficientnet_v2_imagenet21k_xl/feature_vector/2",
-    "inception_resnet_v2": "https://tfhub.dev/google/imagenet/inception_resnet_v2/feature_vector/5",
     "mobilenet_v3_large_100_224": "https://tfhub.dev/google/imagenet/mobilenet_v3_large_100_224/feature_vector/5"
 }
 
 input_shape = {
-    "efficientnet_b7": (600,600,3),
+    # "gtm_model":(224,224,3),
     "efficientnetv2_b3_21k_ft1k": (300,300,3),
     "efficientnetv2_xl_21k_ft1k": (512,512,3),
-    "inception_resnet_v2": (299,299,3),
     "mobilenet_v3_large_100_224": (224,224,3)
 }
 
@@ -43,7 +40,7 @@ class ModelSelector:
               type = 'multiclass'
               ) -> None:
     self.model_inp = list()       # Contains inputs that are required to load the model
-    self.models = dict()          # Contains tf.keras.models as values
+    self.models = dict()
     self.data_path = dataset_path 
     self.summary = dict()             # Contains the accuracy of each model after slef.test() is called
     self.keys = list()            # Contains the model names
@@ -101,21 +98,17 @@ class ModelSelector:
   def __train_model(self, model: CustomModel, data_iterator: CustomDirectoryIterator, epoch, save_model_path, check_point_iter = 10):
     data, label = data_iterator.next()
     count_iter = 1
-    file = open(os.path.join(save_model_path, 'history.txt'), 'w')
     while data is not None:
       print('Number of iterations remaining: ', data_iterator.train_iterations)
-      history = model.fit(data, label, epochs=epoch)
-      file.write(json.dumps(history.history)+'\n')
+      model.fit(data, label, epochs=epoch)
       data, label = data_iterator.next()
       count_iter+=1
       if count_iter>check_point_iter:
         count_iter=0
         model.save(save_model_path)
-    file.flush()
-    file.close()
     model.save(save_model_path)
-    self.models[save_model_path] = model
-    print("Completed training ", save_model_path)
+    del model
+    del self.models[save_model_path]
 
   def train_models(self, epochs = 10, tune_hyperparameters = False, max_trials = 10):
     for i in range(len(self.model_inp)):
@@ -152,7 +145,7 @@ class ModelSelector:
         max_acc=val
         out_key = key
     assert out_key!="", 'Error in testing models, Check if Number of test iterations in Custom Iterator is nonzero'
-    self.models[out_key].save("output_model/"+out_key)
+    # self.models[out_key].save("output_model/"+out_key)
 
   def __test_model(self, model: CustomModel, iterator: CustomDirectoryIterator):
     y_pred, y_test = list(), list()

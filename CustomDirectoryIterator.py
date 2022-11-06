@@ -222,17 +222,19 @@ class CustomDirectoryIterator:
             max_count = max(max_count, l)
             img_count[c] = l
         print("COUNT ",img_count)
-        # check should we balance
+
+        
+        flag = False
         for c in img_count:
             if threshold*max_count > img_count[c]:
+                flag = True
                 break
-            print('already in balanced state')
+        
+        if not flag:
+            print('dataset is balanced')
             return
-        # copy images to new folder
-        # dest = "balanced"
-        # shutil.copytree(path, dest, dirs_exist_ok=True)
-        #path = dest # path updated
-        # increase the images in those classes to match the max_count
+
+        
         r = Random()
         for c in img_count:
             gen_count = max_count - img_count[c]

@@ -1,24 +1,31 @@
 import ModelSelector as ms
-from os import path
+import os
 import pickle
 
 if __name__=='__main__':
 
-    selector = ms.ModelSelector(path.join('.','data','const data test'), 
-                                ms.base_models, ms.input_shape, 
-                                save_model_path = path.join('.', 'const_models' , 'saved_models'))
+    mobi = ms.base_models.popitem()
+    effixl = ms.base_models.popitem()
 
-    selector.load_models(load_from_local=False)
+    models = dict()
+    models[effixl[0]] = effixl[1]
+    selector = ms.ModelSelector(os.path.join('.','data','Minet 5640 Images'), 
+                                models, ms.input_shape, 
+                                save_model_path = './minet_bal')
+
+    selector.load_models(load_from_local=True, batch_size=512, training_size=1)
 
     selector.train_models()
 
+    selector = ms.ModelSelector(os.path.join('.','data','Minet 5640 test'), 
+                                models, ms.input_shape, 
+                                save_model_path = './minet_bal')
+
+    selector.load_models(load_from_local=True, training_size=0)
+
     selector.test_models()
 
-    with open('final_res', 'wb') as file:
+    print(selector.summary)
+
+    with open('./results/minet_bal_res/effixl.pkl', 'wb') as file:
         pickle.dump(selector.summary,file)
-
-    with open('final_res','rb') as file:
-        summary = pickle.load(file)
-
-    print(summary)
-    

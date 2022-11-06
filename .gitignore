@@ -5,7 +5,9 @@ __pycache__
 video_images
 video_source
 balanced
-const_models
+const_models*
 output_model
 test_model_params
+*_models
 *.lock
+minet*
